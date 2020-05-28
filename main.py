@@ -1,13 +1,14 @@
 import discord
 from discord.ext import commands
 
-PREFIX = 'iki-'
+default_prefix = 'iki-'
+custom_prefixes = {}
 TOKEN = 'your token'
 logs_switch = False
 logs_channel = ''
 botName = 'Ангрон'
 botIconUrl = 'https://avatars.yandex.net/get-music-content/192707/732e6f8f.a.5361061-1/m1000x1000?webp=false'
-bot = commands.Bot(command_prefix=PREFIX)  # создание префикса
+bot = commands.Bot(command_prefix=default_prefix)  # создание префикса
 bot.remove_command(name='help')  # удаление предустановленной команды help
 
 
@@ -44,52 +45,53 @@ async def help(ctx, *args):  # создание embed'a для листа ком
         emb = discord.Embed(title='Простые команды', colour=discord.Colour.from_rgb(150, 206, 214))
         emb.set_author(name=botName,
                        icon_url=botIconUrl)
-        emb.add_field(name='{}hi'.format(PREFIX), value='Простое приветсвие. Ничего особенного')
+        emb.add_field(name='{}hi'.format(default_prefix), value='Простое приветсвие. Ничего особенного')
         await ctx.send(embed=emb)
     elif args[0] == 'say':
         emb = discord.Embed(title='Простые команды', colour=discord.Colour.from_rgb(150, 206, 214))
         emb.set_author(name=botName,
                        icon_url=botIconUrl)
-        emb.add_field(name='{}say'.format(PREFIX), value='Говорит то, что вы напишите')
+        emb.add_field(name='{}say'.format(default_prefix), value='Говорит то, что вы напишите')
         await ctx.send(embed=emb)
     elif args[0] == 'kick':
         emb = discord.Embed(title='Простые команды', colour=discord.Colour.from_rgb(150, 206, 214))
         emb.set_author(name=botName,
                        icon_url=botIconUrl)
-        emb.add_field(name='{}kick'.format(PREFIX), value='Пинает вызванного вами человека')
+        emb.add_field(name='{}kick'.format(default_prefix), value='Пинает вызванного вами человека')
         await ctx.send(embed=emb)
     elif args[0] == 'inventory':
         emb = discord.Embed(title='Игровые команды', colour=discord.Colour.from_rgb(150, 206, 214))
         emb.set_author(name=botName,
                        icon_url=botIconUrl)
-        emb.add_field(name='{}inventory'.format(PREFIX), value='Пока в разработке! Вызывает инвентарь ваших вещей')
+        emb.add_field(name='{}inventory'.format(default_prefix),
+                      value='Пока в разработке! Вызывает инвентарь ваших вещей')
         await ctx.send(embed=emb)
     elif args[0] == 'battle':
         emb = discord.Embed(title='Игровые команды', colour=discord.Colour.from_rgb(150, 206, 214))
         emb.set_author(name=botName,
                        icon_url=botIconUrl)
-        emb.add_field(name='{}battle'.format(PREFIX),
+        emb.add_field(name='{}battle'.format(default_prefix),
                       value='Пока в разработке! Вы бросаете вызов человеку и далее сражаетесь или нет')
         await ctx.send(embed=emb)
     elif args[0] == 'log_channel':
         emb = discord.Embed(title='Настройка бота', colour=discord.Colour.from_rgb(150, 206, 214))
         emb.set_author(name=botName,
                        icon_url=botIconUrl)
-        emb.add_field(name='{}log_channel'.format(PREFIX),
+        emb.add_field(name='{}log_channel'.format(default_prefix),
                       value='Выбор канала для создания логов')
         await ctx.send(embed=emb)
     elif args[0] == 'log_switch':
         emb = discord.Embed(title='Настройка бота', colour=discord.Colour.from_rgb(150, 206, 214))
         emb.set_author(name=botName,
                        icon_url=botIconUrl)
-        emb.add_field(name='{}log_switch'.format(PREFIX),
+        emb.add_field(name='{}log_switch'.format(default_prefix),
                       value='Включение/выключение ведения логов. Необходимы значения true или false')
         await ctx.send(embed=emb)
     elif args[0] == 'prefix':
         emb = discord.Embed(title='Настройка бота', colour=discord.Colour.from_rgb(150, 206, 214))
         emb.set_author(name=botName,
                        icon_url=botIconUrl)
-        emb.add_field(name='{}prefix'.format(PREFIX),
+        emb.add_field(name='{}prefix'.format(default_prefix),
                       value='Пока в разработке! Изменение префикса')
         await ctx.send(embed=emb)
     else:
@@ -123,26 +125,41 @@ async def kick(ctx, id):
                               ctx.channel) + '. Мне это не нравится')
 
 
-@bot.command(pass_context=True)
-async def log_switch(ctx, arg):
-    global logs_switch
-    global logs_channel
-    if arg == 'true':
-        logs_switch = True
-        logs_channel = ctx.channel.id
-        await ctx.send('Логи включены на сервере')
-    elif arg == 'false':
-        logs_switch = False
-        await ctx.send('Логи выключены на сервере')
-    else:
-        await ctx.send('Введено неправильное значение')
+class forGuild(commands.Cog, ):
+    @commands.guild_only()
+    @commands.command()
+    async def log_switch(self, ctx, arg):
+        global logs_switch
+        global logs_channel
+        if arg == 'true':
+            logs_switch = True
+            logs_channel = ctx.channel.id
+            await ctx.send('Логи включены на сервере')
+        elif arg == 'false':
+            logs_switch = False
+            await ctx.send('Логи выключены на сервере')
+        else:
+            await ctx.send('Введено неправильное значение')
+
+    @commands.guild_only()
+    @commands.command()
+    async def log_channel(self, ctx, channel_id):
+        global logs_channel
+        logs_channel = int(channel_id[2:-1])
+        await ctx.send('Канал логов изменнён на ' + channel_id)
+
+    @commands.guild_only()
+    @commands.command()
+    async def prefix(self, ctx, *, prefixes=""):
+        global custom_prefixes
+        global default_prefix
+        custom_prefixes[ctx.guild.id] = prefixes.split() or default_prefix
+        bot = commands.Bot(command_prefix=determine_prefix)
+        bot.run()
+        await ctx.send("Prefixes set!")
 
 
-@bot.command(pass_context=True)
-async def log_channel(ctx, channel_id):
-    global logs_channel
-    logs_channel = int(channel_id[2:-1])
-    await ctx.send('Канал логов изменнён на ' + channel_id)
+bot.add_cog(forGuild(bot))
 
 
 async def log_message(ctx, data):
@@ -152,13 +169,12 @@ async def log_message(ctx, data):
     ctx.channel.id = mother_id
 
 
-# @bot.command(pass_context=True)
-# async def prefix(ctx, arg):
-#     global PREFIX
-#     global bot
-#     PREFIX = str(arg)
-#     bot = commands.Bot(command_prefix=PREFIX)
-#     await ctx.send('Префикс изменён на '+PREFIX)
+async def determine_prefix(bot, message):
+    guild = message.guild
+    if guild:
+        return custom_prefixes.get(guild.id, default_prefix)
+    else:
+        return default_prefix
 
 
 @bot.command(pass_context=True)
