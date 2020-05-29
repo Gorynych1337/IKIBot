@@ -1,13 +1,14 @@
 import discord
 from discord.ext import commands
+import os
 
+TOKEN = os.environ.get('TOKEN_FOR_BOT')
 default_prefix = 'iki-'
-custom_prefixes = {}
-TOKEN = 'your token'
-logs_switch = False
-logs_channel = ''
 botName = 'Ангрон'
 botIconUrl = 'https://avatars.yandex.net/get-music-content/192707/732e6f8f.a.5361061-1/m1000x1000?webp=false'
+
+logs_switch = False
+logs_channel = ''
 bot = commands.Bot(command_prefix=default_prefix)  # создание префикса
 bot.remove_command(name='help')  # удаление предустановленной команды help
 
@@ -21,15 +22,7 @@ async def on_ready():
 
 
 @bot.command(pass_context=True)  # разрешена получение данных о сообщении
-async def hi(ctx):  # создаём асинхронную функцию бота
-    await ctx.send('И тебе привет, ' + ctx.message.author.name)  # отправляем сообщение с именем автора
-    if logs_switch == True:
-        await log_message(ctx,
-                          '@' + str(ctx.message.author) + ' поприветствовал меня в #' + str(ctx.channel))
-
-
-@bot.command(pass_context=True)
-async def help(ctx, *args):  # создание embed'a для листа команд
+async def help(ctx, *args):  # создание embed'a для листа команд, создаём асинхронную функцию бота
     if len(args) == 0:
         emb = discord.Embed(title='Лист команд', colour=discord.Colour.from_rgb(150, 206, 214))
         emb.set_author(name=botName,
@@ -98,34 +91,59 @@ async def help(ctx, *args):  # создание embed'a для листа ком
         await ctx.send('У меня нет такой команды :(')
 
 
-@bot.command(pass_context=True)
-async def say(ctx, *args):
-    try:
-        channel_id = args[0]
-        mother_id = ctx.channel.id
-        ctx.channel.id = int(channel_id[2:-1])
-        message = ''
-        for i in range(1, len(args)):
-            message += args[i] + ' '
-        await ctx.send(message)
-        ctx.channel.id = mother_id
-    except:
-        message = ''
-        for i in range(len(args)):
-            message += args[i] + ' '
-        await ctx.send(message)
+class spokenCog(commands.Cog, ):
+    @commands.command()
+    async def hi(self, ctx):
+        await ctx.send('И тебе привет, ' + ctx.message.author.name)  # отправляем сообщение с именем автора
+        await log_message(ctx, ' поприветствовал меня в ')
+
+    @commands.command()
+    async def say(self, ctx, *args):
+        try:
+            channel_id = args[0]
+            text_channel = bot.get_channel(int(channel_id[2:-1]))
+            message = ''
+            for i in range(1, len(args)):
+                message += args[i] + ' '
+            await text_channel.send(message)
+            await ctx.send('Сообщение отправлено')
+        except:
+            message = ''
+            for i in range(len(args)):
+                message += args[i] + ' '
+                print(args[i])
+            await ctx.send(message)
+
+    @commands.command()
+    async def kick(self, ctx, id):
+        await ctx.send('Я пнул этого лоха ' + id)
+        await log_message(ctx, ' пинаето людей в ')
 
 
-@bot.command(pass_context=True)
-async def kick(ctx, id):
-    await ctx.send('Я пнул этого лоха ' + id)
-    if logs_switch == True:
-        await log_message(ctx,
-                          '@' + str(ctx.message.author) + ' пинает людей в #' + str(
-                              ctx.channel) + '. Мне это не нравится')
+bot.add_cog(spokenCog(bot))
 
 
-class forGuild(commands.Cog, ):
+class gameCog(commands.Cog, ):
+
+    @commands.command()
+    async def inventory(ctx, id):
+        # код инвентаря, sql, все дела
+        await ctx.send()
+
+    @commands.command()
+    async def battle(ctx, id):
+        # код боёвки. Возможно рандомное число и какой-нибудь коэф или что-то вроде того
+        # через ивент проверять согласие или отакз человека от боя
+        await ctx.send()
+        if logs_switch == True:
+            await log_message(ctx,  # battle-data
+                              )
+
+
+bot.add_cog(gameCog(bot))
+
+
+class adminsCog(commands.Cog, ):
     @commands.guild_only()
     @commands.command()
     async def log_switch(self, ctx, arg):
@@ -133,8 +151,8 @@ class forGuild(commands.Cog, ):
         global logs_channel
         if arg == 'true':
             logs_switch = True
-            logs_channel = ctx.channel.id
-            await ctx.send('Логи включены на сервере')
+            logs_channel = ctx.channel
+            await ctx.send('Логи включены на сервере. Канал для логов установлен здесь')
         elif arg == 'false':
             logs_switch = False
             await ctx.send('Логи выключены на сервере')
@@ -145,52 +163,27 @@ class forGuild(commands.Cog, ):
     @commands.command()
     async def log_channel(self, ctx, channel_id):
         global logs_channel
-        logs_channel = int(channel_id[2:-1])
+        logs_channel = bot.get_channel(int(channel_id[2:-1]))
         await ctx.send('Канал логов изменнён на ' + channel_id)
 
     @commands.guild_only()
     @commands.command()
-    async def prefix(self, ctx, *, prefixes=""):
-        global custom_prefixes
+    async def prefix(self, ctx, *, message):
         global default_prefix
-        custom_prefixes[ctx.guild.id] = prefixes.split() or default_prefix
-        bot = commands.Bot(command_prefix=determine_prefix)
-        bot.run()
-        await ctx.send("Prefixes set!")
+        default_prefix = message
+        bot.command_prefix = default_prefix
+        await ctx.send("Префикс изменён на " + str(bot.command_prefix))
 
 
-bot.add_cog(forGuild(bot))
+bot.add_cog(adminsCog(bot))
 
 
-async def log_message(ctx, data):
-    mother_id = ctx.channel.id
-    ctx.channel.id = logs_channel
-    await ctx.send(data)
-    ctx.channel.id = mother_id
-
-
-async def determine_prefix(bot, message):
-    guild = message.guild
-    if guild:
-        return custom_prefixes.get(guild.id, default_prefix)
-    else:
-        return default_prefix
-
-
-@bot.command(pass_context=True)
-async def inventory(ctx, id):
-    # код инвентаря, sql, все дела
-    await ctx.send()
-
-
-@bot.command(pass_context=True)
-async def battle(ctx, id):
-    # код боёвки. Возможно рандомное число и какой-нибудь коэф или что-то вроде того
-    # через ивент проверять согласие или отакз человека от боя
-    await ctx.send()
+async def log_message(ctx, text):
     if logs_switch == True:
-        await log_message(ctx,  # battle-data
-                          )
+        author = '<@!' + str(ctx.message.author.id) + '>'
+        channel = '<#' + str(ctx.channel.id) + '>'
+        message = author + text + channel
+        await ctx.send(message)
 
 
 bot.run(TOKEN)
